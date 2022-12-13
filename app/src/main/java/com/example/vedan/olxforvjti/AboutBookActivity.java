@@ -55,10 +55,6 @@ public class AboutBookActivity extends AppCompatActivity {
         pricebook.setText(price_book);
         condbook.setText("Condition - "+cond_book);
         if(!image_book.equals("null")) Picasso.get().load(image_book).fit().centerCrop().into(imageView);
-        else {
-            link.trim();
-            Picasso.get().load(link).fit().centerCrop().into(imageView);
-        }
 
         userprofile.setOnClickListener(new View.OnClickListener() {
             @Override

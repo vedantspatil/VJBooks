@@ -56,9 +56,16 @@ public class NewBookActivity extends AppCompatActivity {
         Initialize_spinner();
 
         firebaseAuth =FirebaseAuth.getInstance();
-        userUID = firebaseAuth.getUid().toString().trim();
-        progressDialog = new ProgressDialog(this);
+        userUID = firebaseAuth.getUid().trim();
+        firebaseDatabase = FirebaseDatabase.getInstance();
         storageReference = FirebaseStorage.getInstance().getReference();
+        databaseReference3 = firebaseDatabase.getReference("All Books");
+        databaseReference = firebaseDatabase.getReference("Users").child(firebaseAuth.getUid()).child("Books");
+        databaseReference1 = firebaseDatabase.getReference("User Images").child(firebaseAuth.getUid()).child("Books");
+        filepath = storageReference.child("Photos").child(firebaseAuth.getUid()).child("Books/");
+        progressDialog = new ProgressDialog(this);
+
+
         if(getSupportActionBar() != null)
         {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -82,15 +89,8 @@ public class NewBookActivity extends AppCompatActivity {
                 progressDialog.setMessage("Adding book");
                 progressDialog.show();
                 if(validate()) {
-                    firebaseDatabase = FirebaseDatabase.getInstance();
-
-                    databaseReference3 = firebaseDatabase.getReference("All Books");
-                    databaseReference = firebaseDatabase.getReference("Users").child(firebaseAuth.getUid()).child("Books");
-                    databaseReference1 = firebaseDatabase.getReference("User Images").child(firebaseAuth.getUid()).child("Books");
-                    filepath = storageReference.child("Photos").child(firebaseAuth.getUid()).child("Books/");
                     final book_details book_details = new book_details(bookname, bookdesc, bookauth, bookedi, bookprice, booksub, bookcond, booksem,imagelink,pushLink);
                     final Allbooks allbooks = new Allbooks(bookname, bookdesc, bookauth, bookedi, bookprice, booksub, bookcond, booksem,imagelink,userUID);
-
                     key = databaseReference3.push().getKey();
                     databaseReference3.child(key).setValue(allbooks).addOnCompleteListener(new OnCompleteListener<Void>() {
                         @Override
@@ -100,7 +100,7 @@ public class NewBookActivity extends AppCompatActivity {
                                     @Override
                                     public void onComplete(@NonNull Task<Void> task) {
                                         if (task.isSuccessful()) {
-                                            task1 = true;
+                                            databaseReference.child(key).child("push_id").setValue(key);
                                         } else {
                                             progressDialog.dismiss();
                                             Toast.makeText(NewBookActivity.this, "Failed to add Book!", Toast.LENGTH_LONG).show();
@@ -114,7 +114,6 @@ public class NewBookActivity extends AppCompatActivity {
 
                     //Adding Book Details
 
-
                     //Adding Image
                     if (imageholder != null) {
                         filepath.putFile(imageholder).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
@@ -123,8 +122,6 @@ public class NewBookActivity extends AppCompatActivity {
                                 downloadlink = taskSnapshot.getDownloadUrl();
                                 imagelink = downloadlink.toString().trim();
                                 databaseReference1.child(key).child("image").setValue(imagelink);
-                                databaseReference1.child(key).child("push_id").setValue(key);
-                                databaseReference.child(key).child("push_id").setValue(key);
                                 databaseReference.child(key).child("imagelink").setValue(imagelink);
                                 databaseReference3.child(key).child("book_Image").setValue(imagelink);
                             }
@@ -141,11 +138,11 @@ public class NewBookActivity extends AppCompatActivity {
                     } else {
                         imagelink = "null";
                         databaseReference1.child(key).child("image").setValue(imagelink);
-                        databaseReference1.child(key).child("push_id").setValue(key);
-                        databaseReference.child(key).child("push_id").setValue(key);
-                        databaseReference.child(key).child("imagelink").setValue(imagelink);
+
+
                     }
 
+                    databaseReference1.child(key).child("push_id").setValue(key);
 
                     Log.d(TAG, "Before if else: " + task1 + ".." + task2);
                   // Add if else and solve the multithreading problem

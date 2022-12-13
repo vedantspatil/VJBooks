@@ -51,8 +51,7 @@ public class MainActivity extends AppCompatActivity {
                 onLogin(v);
             }
         });
-            if(user!=null){
-
+            if(user!=null)
             finish();
             startActivity(new Intent(MainActivity.this , HomeActivity.class));
         }

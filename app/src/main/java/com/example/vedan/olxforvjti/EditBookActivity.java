@@ -20,6 +20,7 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
@@ -47,18 +48,21 @@ public class EditBookActivity extends AppCompatActivity {
     private FirebaseUser firebaseUser;
     private StorageReference storageReference,filepath;
     private FirebaseDatabase firebaseDatabase;
-    private Query query,query1,query2;
-    private DatabaseReference databaseReference,databaseReference1,databaseReference2,temp,temp2;
+    private DatabaseReference databaseReference,databaseReference1,databaseReference2;
     private Uri imageholder=null,downloadlink;
     private static final int GALLARY_REQUEST_CODE = 2;
     private String image_dbname,imagelink = "null",bname,bdesc,bauthor,bedi,bsem,bprice,bsub,bcond,imagelink_present = "null",Uid;
     private ProgressDialog progressDialog;
     private int cond_preset,sem_preset;
     ArrayAdapter<CharSequence> cond_adapter , sem_adapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_edit_book);
+        Intent intent = getIntent();
+        Uid = intent.getExtras().getString("Key").trim();
+
         initialize_view();
 
         //intitalize spinners
@@ -74,10 +78,6 @@ public class EditBookActivity extends AppCompatActivity {
         Initialize_spinner();
 
 
-
-        Intent intent = getIntent();
-        Uid = intent.getExtras().getString("Key").trim();
-        Log.d("UID",Uid);
         firebaseAuth = FirebaseAuth.getInstance();
         storageReference = FirebaseStorage.getInstance().getReference();
         firebaseDatabase = FirebaseDatabase.getInstance();
@@ -88,20 +88,18 @@ public class EditBookActivity extends AppCompatActivity {
         }
         progressDialog = new ProgressDialog(this);
 
-        databaseReference = firebaseDatabase.getReference().child("Users").child(firebaseAuth.getUid());
-        databaseReference1 = firebaseDatabase.getReference().child("User Images").child(firebaseAuth.getUid());
+        databaseReference  = firebaseDatabase.getReference().child("Users").child(firebaseAuth.getUid()).child("Books").child(Uid);
+        databaseReference1 = firebaseDatabase.getReference().child("User Images").child(firebaseAuth.getUid()).child("Books").child(Uid);
         databaseReference2 = firebaseDatabase.getReference().child("All Books").child(Uid);
-        query =  databaseReference.child("Books").orderByChild("push_id").equalTo(Uid);
-        query1 = databaseReference1.child("Books").orderByChild("push_id").equalTo(Uid);
+      //  query =  databaseReference.child("Books").orderByChild("push_id").equalTo(Uid);
+      //  query1 = databaseReference1.child("Books").orderByChild("push_id").equalTo(Uid);
         filepath = storageReference.child("Photos").child(firebaseAuth.getUid()).child("Books/");
 
 
-        query.addListenerForSingleValueEvent(new ValueEventListener() {
+        databaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                if(dataSnapshot.exists()){
-                    for (DataSnapshot childSnapshot: dataSnapshot.getChildren()){
-                        book_details allbooks = childSnapshot.getValue(book_details.class);
+                book_details allbooks = dataSnapshot.getValue(book_details.class);
                     edit_bname.setText(allbooks.getBook_Name().trim());
                     edit_bauthor.setText(allbooks.getBook_Author().trim());
                     edit_bdesc.setText(allbooks.getBook_Description().trim());
@@ -118,8 +116,7 @@ public class EditBookActivity extends AppCompatActivity {
                     imagelink_present = downloadlink;
                     if (!downloadlink.equals("null"))
                         Picasso.get().load(downloadlink).fit().centerCrop().into(edit_image);
-                    }
-                }
+
             }
 
             @Override
@@ -156,8 +153,62 @@ public class EditBookActivity extends AppCompatActivity {
                     Allbooks allbooks = new Allbooks(bname,bdesc,bauthor,bedi,bprice,bsub,bcond, bsem,imagelink_present,firebaseAuth.getUid());
 
                     //uploading information
+                    databaseReference.setValue(bdetails);
+                    databaseReference2.setValue(allbooks);
+                    if(didimagechange != 0) {
+                        if (imageholder != null) {
+                            filepath = filepath.child(imageholder.getLastPathSegment());
+                            filepath.putFile(imageholder).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                                @Override
+                                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                    downloadlink = taskSnapshot.getDownloadUrl();
+                                    imagelink_present = downloadlink.toString().trim();
+                                    databaseReference1.child("image").setValue(imagelink_present).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                        @Override
+                                        public void onComplete(@NonNull Task<Void> task) {
+                                            //do your task
+                                        }
+                                    }).addOnFailureListener(new OnFailureListener() {
+                                        @Override
+                                        public void onFailure(@NonNull Exception e) {
+                                            Toast.makeText(EditBookActivity.this, "Failed to add book"+ e.toString(), Toast.LENGTH_SHORT).show();
+                                            finish();
+                                        }
+                                    });
+                                    databaseReference.child("imagelink").setValue(imagelink_present).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                        @Override
+                                        public void onComplete(@NonNull Task<Void> task) {
+                                            //do your task
+                                        }
+                                    }).addOnFailureListener(new OnFailureListener() {
+                                        @Override
+                                        public void onFailure(@NonNull Exception e) {
+                                            Toast.makeText(EditBookActivity.this, "Failed to add book"+ e.toString(), Toast.LENGTH_SHORT).show();
+                                            finish();
+                                        }
+                                    });
+                                    databaseReference2.child("book_Image").setValue(imagelink_present).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                        @Override
+                                        public void onComplete(@NonNull Task<Void> task) {
+                                            Toast.makeText(EditBookActivity.this, "Book added successfully", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }).addOnFailureListener(new OnFailureListener() {
+                                        @Override
+                                        public void onFailure(@NonNull Exception e) {
+                                            Toast.makeText(EditBookActivity.this, "Failed to add book"+ e.toString(), Toast.LENGTH_SHORT).show();
+                                            finish();
+                                        }
+                                    });
 
-                    databaseReference.child("Books").orderByChild("push_id").equalTo(Uid).addListenerForSingleValueEvent(new ValueEventListener() {
+                                }
+                            });
+
+                        }
+                    }
+
+                    //older method below
+
+                   /* databaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
                             if(dataSnapshot.exists()){
@@ -173,8 +224,8 @@ public class EditBookActivity extends AppCompatActivity {
 
                             Toast.makeText(EditBookActivity.this,databaseError.getCode(), Toast.LENGTH_SHORT).show();
                         }
-                    });
-                    databaseReference1.child("Books").orderByChild("push_id").equalTo(Uid).addListenerForSingleValueEvent(new ValueEventListener() {
+                    });*/
+                  /*  databaseReference1.addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
                             if(dataSnapshot.exists()){
@@ -210,10 +261,8 @@ public class EditBookActivity extends AppCompatActivity {
                         public void onCancelled(DatabaseError databaseError) {
                             Toast.makeText(EditBookActivity.this,databaseError.getCode(), Toast.LENGTH_SHORT).show();
                         }
-                    });
-                    databaseReference2.setValue(allbooks);
+                    });*/
                     progressDialog.dismiss();
-
 
                 } else{
                     progressDialog.dismiss();
@@ -245,51 +294,19 @@ public class EditBookActivity extends AppCompatActivity {
                         //delete books from all database
                         progressDialog.show();
 
-                        databaseReference.child("Books").orderByChild("push_id").equalTo(Uid).addListenerForSingleValueEvent(new ValueEventListener() {
+                        databaseReference.removeValue().addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                if(dataSnapshot.exists()){
-                                    for(DataSnapshot childSnapshot : dataSnapshot.getChildren()){
-                                        temp = childSnapshot.getRef();
-                                        temp.removeValue().addOnCompleteListener(new OnCompleteListener<Void>() {
-                                            @Override
-                                            public void onComplete(@NonNull Task<Void> task) {
-                                                if(task.isSuccessful()){
-                                                   Log.d("DELETE","BOOK DELETED FROM USERS");
-                                                    // Toast.makeText(EditBookActivity.this, "Book Deleted ! ", Toast.LENGTH_SHORT).show();
-                                                    finish();
-                                                }
-                                            }
-                                        });
-                                    }
+                            public void onComplete(@NonNull Task<Void> task) {
+                                if(task.isSuccessful()){
+                                    Log.d("DELETE","BOOK DELETED FROM USERS");
+                                    // Toast.makeText(EditBookActivity.this, "Book Deleted ! ", Toast.LENGTH_SHORT).show();
                                 }
-                            }
-
-                            @Override
-                            public void onCancelled(DatabaseError databaseError) {
-
-                                Toast.makeText(EditBookActivity.this,databaseError.getCode(), Toast.LENGTH_SHORT).show();
                             }
                         });
-                        databaseReference1.child("Books").orderByChild("push_id").equalTo(Uid).addListenerForSingleValueEvent(new ValueEventListener() {
+                        databaseReference1.removeValue().addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                if(dataSnapshot.exists()){
-                                    for(DataSnapshot childSnapshot : dataSnapshot.getChildren()){
-                                        temp2 = childSnapshot.getRef();
-                                        temp2.removeValue().addOnCompleteListener(new OnCompleteListener<Void>() {
-                                            @Override
-                                            public void onComplete(@NonNull Task<Void> task) {
-                                                Log.d("DELETE","BOOK DELETED FROM USERS IMAGES");
-                                            }
-                                        });
-                                    }
-                                }
-                            }
-
-                            @Override
-                            public void onCancelled(DatabaseError databaseError) {
-                                Toast.makeText(EditBookActivity.this,databaseError.getCode(), Toast.LENGTH_SHORT).show();
+                            public void onComplete(@NonNull Task<Void> task) {
+                                Log.d("DELETE","BOOK DELETED FROM USERS IMAGES");
                             }
                         });
                         databaseReference2.removeValue().addOnCompleteListener(new OnCompleteListener<Void>() {

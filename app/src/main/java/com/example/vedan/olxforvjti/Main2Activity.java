@@ -82,11 +82,6 @@ public class Main2Activity extends AppCompatActivity {
         progressDialog = new ProgressDialog(this);
         storageReference = FirebaseStorage.getInstance().getReference();
 
-
-
-
-
-
         signup_image.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
